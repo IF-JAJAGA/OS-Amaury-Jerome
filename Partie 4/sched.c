@@ -42,15 +42,16 @@ void create_process(func_t f, void *args, unsigned int stack_size){
 
 void start_current_process(){
 	current_process->etat = RUNNING;
+	//current_process->f(current_process->args);
 	current_process->f();
 	current_process->etat = DEAD;
 	ctx_switch();
 }
 
 void elect(){
-	//TODO : choisir le process et changer current_process.
+	//Choisi le process et change current_process.
 	
-	//Pour l'instant, on prend le prochain élément dans la liste.
+	//On prend le prochain élément dans la liste.
 	//current_process = current_process->next;
 	while(current_process->next->etat == DEAD){
 		//Supprimer de la liste chainée.
