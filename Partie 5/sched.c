@@ -11,8 +11,35 @@ static struct pcb_s *idle;
 
 
 void ctx_switch_from_irq(){
-	int a = 10;
-	int b = a+2;	
+	DISABLE_IRQ();
+	
+	//Déplacement du pointeur de pile au bon endroit à cause de l'interruption
+	__asm("sub lr, lr, #4");
+	__asm("srsdb sp!, #0x13");
+	__asm("cps #0x13");
+
+	__asm("push {r0-r12}");
+	
+	__asm("mov %0, sp" : "=r"(current_process->stackPointer));
+	__asm("mov %0, lr" : "=r"(current_process->pc));
+	
+	elect();
+
+	__asm("mov sp, %0" : : "r"(current_process->stackPointer));
+	__asm("mov lr, %0" : : "r"(current_process->pc));
+
+	__asm("pop {r0-r12}");
+
+	set_tick_and_enable_timer();
+	ENABLE_IRQ();
+	
+	if(current_process->etat == READY){
+		start_current_process();
+	}
+
+	__asm("rfeia sp!");	
+	
+	
 }
 
 void init_pcb(struct pcb_s *pcb, unsigned int pid, func_t f, void* args){
@@ -33,6 +60,7 @@ void init_pcb(struct pcb_s *pcb, unsigned int pid, func_t f, void* args){
 }
 
 void create_process(func_t f, void *args, unsigned int stack_size){
+	DISABLE_IRQ();
 	struct pcb_s *pcb = (unsigned int) (phyAlloc_alloc(sizeof(struct pcb_s)) + sizeof(struct pcb_s) -4);
 	init_pcb(pcb, pidCurrent++, f, args);
 	
@@ -42,13 +70,14 @@ void create_process(func_t f, void *args, unsigned int stack_size){
 		current_process->next = pcb;
 	}
 	current_process = pcb;	
+	set_tick_and_enable_timer();
+	ENABLE_IRQ();
 }
 
 void start_current_process(){
 	current_process->etat = RUNNING;
-	current_process->f();
+	current_process->f(current_process->args);
 	current_process->etat = DEAD;
-	ctx_switch();
 }
 
 void elect(){
@@ -74,18 +103,23 @@ void elect(){
 		current_process->etat = WAITING;
 	}
 	current_process = current_process->next;
-	current_process->etat = RUNNING;
+	if(current_process->etat != READY){
+		current_process->etat = RUNNING;
+	}
 }
 
 void start_sched(){
 	//Activation des interruptions.
-	init_hw();
-	ENABLE_IRQ();
-	
-	//Initialisation de idle
+	//init_hw();
 	struct pcb_s *idle = (unsigned int) phyAlloc_alloc(sizeof(struct pcb_s)) + sizeof(struct pcb_s) -4;
 	init_pcb(idle, -1, NULL, NULL);
+
+	//Initialisation de idle
 	current_process = idle;
+
+	set_tick_and_enable_timer();
+	ENABLE_IRQ();
+	
 }
 
 void __attribute__ ((naked)) ctx_switch(){

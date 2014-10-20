@@ -3,7 +3,7 @@
 
 #define STACK_SIZE 1024 
 
-typedef void (*func_t) (void);
+typedef void (*func_t) (void*);
 
 
 /*struct ctx_s{
@@ -38,6 +38,5 @@ void elect();
 void start_sched();
 
 void create_process(func_t f, void *args, unsigned int stack_size);
-void __attribute__ ((naked)) ctx_switch();
 
 #endif

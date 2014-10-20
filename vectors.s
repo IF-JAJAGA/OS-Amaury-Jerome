@@ -19,8 +19,7 @@ swi_handler:        .word swi
 prefetch_handler:   .word prefetch
 data_handler:       .word data
 unused_handler:     .word unused
-;@irq_handler:        .word irq
-irq_handler:        .word ctx_switch_from_irq
+irq_handler:        .word irq
 fiq_handler:        .word fiq
 
 reset:
@@ -91,7 +90,7 @@ BRANCHTO:
 dummy:
     bx lr
 irq:
-    b irq
+    b ctx_switch_from_irq
 
 	
 ;@-------------------------------------------------------------------------
